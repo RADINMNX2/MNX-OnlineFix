@@ -1,0 +1,135 @@
+
+================================================================================
+PROJECT: MNX ONLINE FIX (NEXT-GEN ARCHITECTURE)
+AUTHOR: RADINMNX
+LEVEL: SENIOR/PRINCIPAL ENGINEER SPECS
+================================================================================
+
+[1] THE CORE CONCEPT (THE "TRICK")
+--------------------------------------------------------------------------------
+This application is a "User-Mode Network Bridge" masquerading as a Steam API emulator.
+
+1.  **DLL Proxying (The Hook):**
+    PC games load `steam_api64.dll` to talk to Steam. We rename their real file to
+    `steam_api64_original.dll` and place our OWN custom C++ DLL (compiled as a Node
+    Addon or raw DLL) named `steam_api64.dll` in the game folder.
+    
+    When the game starts, it loads *our* DLL. We export the exact same function signatures
+    (ABI) as the real Steam API.
+
+2.  **The Interception:**
+    When the game calls `SteamNetworking()->SendP2PPacket()`, it calls *our* function.
+    Instead of sending data to Steam's servers, we:
+    a.  Capture the raw byte buffer.
+    b.  Wrap it in our own UDP header.
+    c.  Send it directly to the target IP (LAN or WAN) defined in the Electron App.
+
+3.  **The Bridge (IPC):**
+    Our DLL isn't just a dumb forwarder. It connects back to the Electron Main Process
+    via Named Pipes (Windows) or shared memory. This allows the React UI to:
+    -   Change the target IP in real-time without restarting the game.
+    -   See who is in the lobby.
+    -   Inject Overlay data (Drawing on top of DirectX/Vulkan).
+
+================================================================================
+[2] SENIOR-LEVEL IMPROVEMENTS (MAKING IT WORLD-CLASS)
+--------------------------------------------------------------------------------
+The current version is a "Manual IP Forwarder". Here is how we upgrade it to a 
+commercial-grade "Virtual LAN" solution:
+
+A.  **NAT Traversal (No Port Forwarding):**
+    *   *Problem:* Users hate opening ports (27015).
+    *   *Solution:* Implement ICE (Interactive Connectivity Establishment) with STUN/TURN.
+    *   *Logic:*
+        1.  App connects to a public STUN server (Google's are free) to find its Public IP/Port mapping.
+        2.  "Hole Punching": Both clients send packets to each other simultaneously to trick the Router's NAT table into allowing the connection.
+        3.  Result: Seamless connection over the internet without manual configuration.
+
+B.  **Reliability Layer (RUDP):**
+    *   *Problem:* UDP packets get lost. Game state desyncs.
+    *   *Solution:* Implement a custom reliability layer on top of UDP (similar to ENet or RakNet).
+        -   Sequence Numbers: Discard old packets, re-order out-of-order packets.
+        -   ACKs: Resend critical packets (like "Player Joined") if no acknowledgement is received.
+
+C.  **Dual-Architecture Support:**
+    *   *Requirement:* Many old games are 32-bit (`steam_api.dll`), new ones are 64-bit (`steam_api64.dll`).
+    *   *Implementation:* The Node.js builder must compile TWO versions of the proxy DLL. The Electron app detects the game's architecture (reading PE headers) and injects the correct one.
+
+D.  **Advanced Overlay (DX11/DX12/Vulkan Hooking):**
+    *   Instead of a simple transparent window (which loses focus), we hook the `Present` function of the Graphics API (DirectX).
+    *   We inject ImGui directly into the game's render loop. This allows drawing menus *inside* the game that catch mouse inputs before the game does.
+
+E.  **Encryption (DTLS):**
+    *   Wrap all P2P traffic in DTLS (Datagram Transport Layer Security) or AES-256-GCM. This prevents ISPs or firewalls from analyzing the game traffic as "suspicious" and protects player IP addresses.
+
+================================================================================
+[3] PROJECT FILE STRUCTURE (OPTIMIZED)
+--------------------------------------------------------------------------------
+
+/
+├── .github/                   # CI/CD Pipelines (Auto-build on commit)
+├── build/                     # Native compilation artifacts
+│   └── Release/
+│       ├── mnx_proxy_x64.node
+│       └── mnx_proxy_x86.node
+├── native/                    # C++ Source Code (The "Engine")
+│   ├── src/
+│   │   ├── hooks/             # MinHook logic for DX11/Networking
+│   │   ├── networking/        # UDP/STUN/Socket logic
+│   │   ├── bridge/            # Node-API (NAPI) bindings
+│   │   └── main.cpp           # DllMain entry point
+│   └── binding.gyp            # Build config for node-gyp
+├── src/
+│   ├── main/                  # Electron Main Process (Node.js)
+│   │   ├── index.ts           # Entry point
+│   │   ├── ipc.ts             # Handle React <-> Node communication
+│   │   └── injector.ts        # Logic to file-swap DLLs
+│   ├── renderer/              # React UI (Frontend)
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── App.tsx
+│   └── shared/                # TypeScript types shared between Main/Renderer
+├── resources/                 # Icons, Static assets
+├── package.json
+├── electron-builder.yml       # Configuration for the .exe installer
+└── vite.config.ts             # Bundler config
+
+================================================================================
+[4] THE BUILD PIPELINE (HOW TO MAKE THE .EXE)
+--------------------------------------------------------------------------------
+This is the magic step. Electron doesn't just "become" an exe; it packages a Chrome
+browser + Node.js runtime + your files.
+
+**Step 1: The Native Build (C++)**
+1.  We use `node-gyp` (Google's build tool for Node).
+2.  It takes `binding.gyp` and the C++ code.
+3.  It invokes MSBuild (Visual Studio Compiler) on Windows.
+4.  Output: A `.node` file (which is effectively a DLL that Node.js can `require()`).
+
+**Step 2: The Frontend Build (React/Vite)**
+1.  Vite compiles TypeScript/React into standard HTML/CSS/JS.
+2.  Output goes to `dist/`.
+
+**Step 3: The Packaging (Electron-Builder)**
+1.  Tool: `electron-builder`.
+2.  It reads `package.json` or `electron-builder.yml`.
+3.  It bundles the `dist/` folder (UI) and `src/main/` (Backend).
+4.  **Crucial Step:** It creates an ASAR archive (a read-only file system).
+5.  It bundles the `native/build/Release/*.node` files alongside the app (as "extraResources").
+6.  It uses NSIS (Nullsoft Scriptable Install System) to create the `Setup.exe` installer.
+
+**Command Flow:**
+> `npm run build`
+   -> `tsc` (Type check)
+   -> `vite build` (Compile UI)
+   -> `node-gyp rebuild` (Compile C++ Proxy)
+   -> `electron-builder --win` (Package everything into .exe)
+
+================================================================================
+[5] ANTI-VIRUS & SIGNING (THE FINAL BOSS)
+--------------------------------------------------------------------------------
+Since we are injecting DLLs and intercepting traffic, Windows Defender will hate us.
+To fix this in a professional release:
+1.  **Code Signing:** Buy an EV Code Signing Certificate (expensive) to sign the .exe and the .dll.
+2.  **Obfuscation:** Use tools like JavaScript Obfuscator for the Electron part and VMProtect for the C++ part to prevent reverse engineering and false positives.
+

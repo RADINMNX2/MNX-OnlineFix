@@ -1,0 +1,78 @@
+<svg width="256" height="256" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- 
+    MNX ONLINE FIX SVG Icon v2 - The Agent
+    Created by RADINMNX
+    - A character-based icon representing a cybernetic agent or fixer.
+    - The 'X' visor is the central element, linking to "MNX" and "FIX".
+    - Maintains the black/neon-red theme.
+  -->
+
+  <defs>
+    <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur" />
+      <feFlood flood-color="#FF0000" result="color" />
+      <feComposite in="color" in2="blur" operator="in" result="glow" />
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Base Helmet/Mask Shape -->
+  <g>
+    <!-- Dark main helmet shape -->
+    <path 
+      d="M50 8 L90 40 V 80 L75 92 H25 L10 80 V 40 Z" 
+      fill="#1A1A1A"
+      stroke="#333333"
+      stroke-width="1"
+    />
+    <!-- Inner faceplate shading for depth -->
+    <path
+      d="M50 12 L85 42 V 78 L72 89 H28 L15 78 V 42 Z"
+      fill="#101010"
+    />
+  </g>
+
+  <!-- Glowing Neon Elements -->
+  <g filter="url(#neon-glow)">
+    
+    <!-- The main 'X' Visor -->
+    <!-- White base for a sharper glow -->
+    <path 
+      d="M30 40 L70 65 M70 40 L30 65"
+      stroke="#FFFFFF" 
+      stroke-width="7" 
+      stroke-linecap="round"
+    />
+    <!-- Red neon on top -->
+    <path 
+      d="M30 40 L70 65 M70 40 L30 65"
+      stroke="#FF0000" 
+      stroke-width="5" 
+      stroke-linecap="round"
+    />
+
+    <!-- Small accent lines on the "forehead" -->
+     <path
+      d="M42 25 L50 33 L58 25"
+      fill="none"
+      stroke="#FF0000"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- Chin accent -->
+     <path
+      d="M40 85 L50 90 L60 85"
+      fill="none"
+      stroke="#FF0000"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+  </g>
+</svg>

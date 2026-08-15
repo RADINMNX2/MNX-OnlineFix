@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #000000;
+  color: #e5e7eb;
+  overflow: hidden;
+}
+
+.hex-background {
+    background-color: #000000;
+    background-image:
+        linear-gradient(rgba(255, 0, 0, 0.07) 1px, transparent 1px),
+        linear-gradient(to right, rgba(255, 0, 0, 0.07) 1px, transparent 1px);
+    background-size: 2rem 2rem;
+    animation: hex-scroll 60s linear infinite;
+}
+
+/* Custom scrollbar for a more integrated look */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #1f1f1f;
+}
+::-webkit-scrollbar-thumb {
+  background: #FF0000;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #cc0000;
+}
+
+/* ============================================================================
+   NEON OS — Motion System
+   ============================================================================ */
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #161616 25%, #262626 50%, #161616 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
+/* Radar sweep */
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.radar-sweep {
+  animation: radar-sweep 3.2s linear infinite;
+}
+
+/* Expanding pulse ring */
+@keyframes pulse-ring {
+  0% { transform: scale(0.55); opacity: 0.9; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+.pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Floating (empty states) */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.float-y {
+  animation: float-y 3.2s ease-in-out infinite;
+}
+
+/* Toast progress bar */
+@keyframes toast-progress {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+.toast-progress {
+  animation-name: toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* Live dot blinking */
+@keyframes live-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+.live-dot {
+  animation: live-blink 1.4s ease-in-out infinite;
+}
+
+/* Soft glow text */
+@keyframes glow-flicker {
+  0%, 100% { text-shadow: 0 0 8px rgba(255, 0, 0, 0.6); }
+  50% { text-shadow: 0 0 20px rgba(255, 0, 0, 0.95), 0 0 40px rgba(255, 0, 0, 0.35); }
+}
+.glow-flicker {
+  animation: glow-flicker 3s ease-in-out infinite;
+}
+
+/* Drop zone dashed border spin (drag & drop) */
+@keyframes border-rotate {
+  from { background-position: 0 0; }
+  to { background-position: 24px 0; }
+}
+.drop-active-border {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 0, 0, 0.7) 0 6px,
+    transparent 6px 12px
+  );
+  animation: border-rotate 1s linear infinite;
+}

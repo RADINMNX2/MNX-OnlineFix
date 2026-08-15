@@ -1,0 +1,28 @@
+# Node & Electron dependencies
+node_modules/
+dist/
+dist-electron/
+release/
+*.log
+
+# Rust / Cargo build artifacts
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Native binaries generated during build
+*.node
+*.dll
+*.exe
+*.exp
+*.lib
+*.pdb
+
+# Local environment & caches
+.env
+.env.local
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.opencode/

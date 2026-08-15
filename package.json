@@ -1,0 +1,64 @@
+{
+  "name": "mnx-online-fix",
+  "version": "1.0.0",
+  "description": "MNX Online Fix tool with proxy injection and network control.",
+  "main": "dist-electron/main.js",
+  "gypfile": false,
+  "napi": {
+    "name": "mnx_steam_proxy"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder",
+    "dist": "npm run build"
+  },
+  "author": "RADINMNX",
+  "license": "ISC",
+  "dependencies": {
+    "electron-store": "^9.0.0",
+    "framer-motion": "^11.3.2",
+    "lucide-react": "^0.400.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "electron": "^31.2.1",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.5.2",
+    "vite": "^5.3.1",
+    "vite-plugin-electron": "^0.28.7",
+    "vite-plugin-electron-renderer": "^0.14.5"
+  },
+  "build": {
+    "appId": "com.radinmnx.mnxonlinefix",
+    "productName": "MNX ONLINE FIX",
+    "files": [
+      "dist",
+      "dist-electron",
+      "package.json"
+    ],
+    "win": {
+      "icon": "public/icon.png"
+    },
+    "extraResources": [
+      {
+        "from": "MNX_DLL",
+        "to": "MNX_DLL"
+      },
+      {
+        "from": "addon.cpp",
+        "to": "addon.cpp"
+      },
+      {
+        "from": "binding.gyp.txt",
+        "to": "binding.gyp.txt"
+      }
+    ]
+  }
+}

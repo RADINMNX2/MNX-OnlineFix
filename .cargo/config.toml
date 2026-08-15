@@ -1,0 +1,6 @@
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+    "-C", "link-arg=/export:SteamAPI_Init=steam_api64_original.SteamAPI_Init",
+    "-C", "link-arg=/export:SteamAPI_Shutdown=steam_api64_original.SteamAPI_Shutdown",
+    "-C", "link-arg=/export:SteamAPI_RunCallbacks=steam_api64_original.SteamAPI_RunCallbacks"
+]

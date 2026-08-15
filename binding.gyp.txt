@@ -1,0 +1,39 @@
+{
+  "targets": [
+    {
+      "target_name": "mnx_steam_proxy",
+      "sources": [
+        "MNX_DLL/dllmain.cpp",
+        "addon.cpp"
+        // NOTE: For the overlay to compile, you must add the source files
+        // for Dear ImGui (e.g., imgui.cpp, imgui_draw.cpp, imgui_widgets.cpp,
+        // imgui_impl_win32.cpp, imgui_impl_dx11.cpp) and MinHook (e.g., buffer.c,
+        // hook.c, trampoline.c, hde/hde32.c, hde/hde64.c) here.
+        // Due to project constraints, they are not added automatically.
+      ],
+      "include_dirs": [
+        "<!@(node -p \"require('node-addon-api').include\")",
+        "MNX_DLL/" // Include our own DLL directory for headers
+      ],
+      "dependencies": [
+        "<!(node -p \"require('node-addon-api').gyp\")"
+      ],
+      "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
+      "msvs_settings": {
+        "VCCLCompilerTool": {
+          "ExceptionHandling": 1, # 1 means /EHsc
+          "RuntimeLibrary": 2 # 2 means /MD (Multi-threaded DLL)
+        }
+      },
+      "conditions": [
+        ["OS=='win'", {
+          "libraries": [
+            "ws2_32.lib",
+            "d3d11.lib",    // DirectX 11 for rendering
+            "dxgi.lib"      // DirectX Graphics Infrastructure
+          ]
+        }]
+      ]
+    }
+  ]
+}

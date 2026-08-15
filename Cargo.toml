@@ -1,0 +1,40 @@
+[package]
+name = "mnx_steam_proxy"
+version = "1.0.0"
+edition = "2021"
+authors = ["RADINMNX"]
+description = "MNX high-performance Windows IPC Shared Memory bridge"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+name = "mnx_steam_proxy"
+
+[dependencies]
+napi = { version = "2.12.2", default-features = false, features = ["napi4", "compat-mode"] }
+napi-derive = "2.12.2"
+windows-sys = { version = "0.52.0", features = [
+    "Win32_Foundation",
+    "Win32_System_Memory",
+    "Win32_Security",
+    "Win32_Networking_WinSock",
+    "Win32_System_IO",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_LibraryLoader",
+    "Win32_System_SystemServices",
+] }
+minhook-sys = { version = "0.1.1", optional = true }
+imgui-sys = { version = "0.11.0", optional = true }
+jni = { version = "0.21.1", optional = true }
+
+[features]
+default = []
+overlay = ["dep:imgui-sys", "dep:minhook-sys"]
+jni_support = ["dep:jni"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

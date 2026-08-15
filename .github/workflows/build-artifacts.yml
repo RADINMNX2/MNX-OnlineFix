@@ -1,0 +1,144 @@
+name: MNX Rust CI/CD - High-Performance Windows Artifacts Build
+
+on:
+  push:
+    branches: [ main, master, dev, "feature/**" ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build x86_64-pc-windows-msvc Binaries
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+          default: true
+
+      - name: Cache Node Modules
+        uses: actions/cache@v4
+        id: node-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Cache Cargo Directories
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Node.js Dependencies
+        shell: bash
+        run: |
+          npm install
+          npm install --no-save @napi-rs/cli
+
+      - name: TypeScript Type-Check
+        shell: bash
+        run: |
+          npx tsc --noEmit
+
+      - name: Vite Production Build (Renderer + Main)
+        shell: bash
+        run: |
+          npx vite build
+
+      - name: Compile napi-rs Node.js Native Addon
+        shell: bash
+        run: |
+          npx napi build --release
+
+      - name: Compile Proxy DLL (cdylib Target)
+        shell: cmd
+        run: |
+          cargo build --release --lib
+          copy target\release\mnx_steam_proxy.dll steam_api64.dll
+
+      - name: Post-Build Integrity Check
+        shell: pwsh
+        run: |
+          $napi_exists = Test-Path "mnx_steam_proxy.node"
+          $dll_exists = Test-Path "steam_api64.dll"
+
+          if (-not $napi_exists) {
+              Write-Error "CRITICAL FAILURE: mnx_steam_proxy.node was not generated successfully."
+              exit 1
+          } else {
+              Write-Host "SUCCESS: Verified mnx_steam_proxy.node is present."
+          }
+
+          if (-not $dll_exists) {
+              Write-Error "CRITICAL FAILURE: steam_api64.dll is missing from destination folder."
+              exit 1
+          } else {
+              Write-Host "SUCCESS: Verified steam_api64.dll is present."
+          }
+
+          Write-Host "All core binaries generated and verified successfully!"
+
+      - name: Upload Compiled Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mnx-rust-windows-binaries
+          path: |
+            mnx_steam_proxy.node
+            steam_api64.dll
+          if-no-files-found: error
+          retention-days: 14
+
+  check-overlay:
+    name: Check Optional Overlay Feature (imgui + minhook)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+          default: true
+
+      - name: Cache Cargo Directories
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-overlay-${{ hashFiles('Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-overlay-
+
+      - name: Cargo Check (default features)
+        shell: cmd
+        run: cargo check --release --lib
+
+      - name: Cargo Check (overlay feature)
+        shell: cmd
+        run: cargo check --release --lib --features overlay
