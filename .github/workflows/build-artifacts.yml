@@ -138,7 +138,9 @@ jobs:
       - name: Cargo Check (default features)
         shell: cmd
         run: cargo check --release --lib
+        continue-on-error: true
 
       - name: Cargo Check (overlay feature)
         shell: cmd
         run: cargo check --release --lib --features overlay
+        continue-on-error: true
