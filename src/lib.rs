@@ -289,10 +289,10 @@ pub fn read_network_stats(env: Env) -> Result<JsObject> {
     }
 
     let mut obj = env.create_object()?;
-    obj.set_named_property("packetsSent", env.create_uint64(stats.packets_sent)?)?;
-    obj.set_named_property("packetsReceived", env.create_uint64(stats.packets_received)?)?;
-    obj.set_named_property("bytesSent", env.create_uint64(stats.bytes_sent)?)?;
-    obj.set_named_property("bytesReceived", env.create_uint64(stats.bytes_received)?)?;
+    obj.set_named_property("packetsSent", env.create_int64(stats.packets_sent as i64)?)?;
+    obj.set_named_property("packetsReceived", env.create_int64(stats.packets_received as i64)?)?;
+    obj.set_named_property("bytesSent", env.create_int64(stats.bytes_sent as i64)?)?;
+    obj.set_named_property("bytesReceived", env.create_int64(stats.bytes_received as i64)?)?;
     Ok(obj)
 }
 
@@ -486,7 +486,7 @@ fn ensure_socket_initialized() {
         let _ = networking::init_global_socket(bind_port);
 
         // Lazily install the in-game overlay hook once the DLL is active
-        let _ = overlay::dx11::init_overlay_hook();
+        let _ = unsafe { overlay::dx11::init_overlay_hook() };
     });
 }
 
@@ -631,6 +631,97 @@ unsafe extern "system" fn impl_accept_p2p_session_with_user(
 // ============================================================================
 // 9. Intercepted Network API Exports for steam_api64.dll Hijack / Proxying
 // ============================================================================
+
+static mut ORIGINAL_STEAM_DLL: usize = 0;
+
+unsafe fn get_original_steam_dll() -> usize {
+    if ORIGINAL_STEAM_DLL == 0 {
+        let name: Vec<u16> = "steam_api64_original.dll\0".encode_utf16().collect();
+        let h = windows_sys::Win32::System::LibraryLoader::LoadLibraryW(name.as_ptr());
+        ORIGINAL_STEAM_DLL = h as usize;
+    }
+    ORIGINAL_STEAM_DLL
+}
+
+type FnSteamApiInit = unsafe extern "C" fn() -> bool;
+type FnSteamApiShutdown = unsafe extern "C" fn();
+type FnSteamApiRunCallbacks = unsafe extern "C" fn();
+
+#[no_mangle]
+pub unsafe extern "C" fn SteamAPI_Init() -> bool {
+    ensure_socket_initialized();
+    let original = get_original_steam_dll();
+    if original != 0 {
+        let sym_name = std::ffi::CString::new("SteamAPI_Init").unwrap();
+        let proc_addr = windows_sys::Win32::System::LibraryLoader::GetProcAddress(
+            original as _,
+            sym_name.as_ptr() as *const u8,
+        );
+        if let Some(f) = proc_addr {
+            let func: FnSteamApiInit = std::mem::transmute(f);
+            return func();
+        }
+    }
+    true
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SteamAPI_InitFlat(_p_err: *mut u8) -> bool {
+    SteamAPI_Init()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SteamAPI_Shutdown() {
+    let original = get_original_steam_dll();
+    if original != 0 {
+        let sym_name = std::ffi::CString::new("SteamAPI_Shutdown").unwrap();
+        let proc_addr = windows_sys::Win32::System::LibraryLoader::GetProcAddress(
+            original as _,
+            sym_name.as_ptr() as *const u8,
+        );
+        if let Some(f) = proc_addr {
+            let func: FnSteamApiShutdown = std::mem::transmute(f);
+            func();
+        }
+    }
+    networking::shutdown_global_socket();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SteamAPI_RunCallbacks() {
+    let original = get_original_steam_dll();
+    if original != 0 {
+        let sym_name = std::ffi::CString::new("SteamAPI_RunCallbacks").unwrap();
+        let proc_addr = windows_sys::Win32::System::LibraryLoader::GetProcAddress(
+            original as _,
+            sym_name.as_ptr() as *const u8,
+        );
+        if let Some(f) = proc_addr {
+            let func: FnSteamApiRunCallbacks = std::mem::transmute(f);
+            func();
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SteamAPI_IsSteamRunning() -> bool {
+    true
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SteamAPI_RestartAppIfNecessary(_app_id: u32) -> bool {
+    false
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SteamAPI_GetHSteamPipe() -> i32 {
+    1
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SteamAPI_GetHSteamUser() -> i32 {
+    1
+}
 
 #[no_mangle]
 pub extern "system" fn SteamNetworking() -> *const SteamNetworkingImpl {
