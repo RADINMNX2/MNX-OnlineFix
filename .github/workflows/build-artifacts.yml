@@ -1,5 +1,9 @@
 name: MNX Rust CI/CD - High-Performance Windows Artifacts Build
 
+permissions:
+  contents: read
+  issues: write
+
 on:
   push:
     branches: [ main, master, dev, "feature/**" ]
@@ -68,13 +72,13 @@ jobs:
       - name: Compile napi-rs Node.js Native Addon
         shell: bash
         run: |
-          npx napi build --release
+          npx napi build --release 2>&1 | tee napi_build.log
 
       - name: Compile Proxy DLL (cdylib Target)
-        shell: cmd
+        shell: bash
         run: |
-          cargo build --release --lib
-          copy target\release\mnx_steam_proxy.dll steam_api64.dll
+          cargo build --release --lib 2>&1 | tee proxy_build.log
+          cp target/release/mnx_steam_proxy.dll steam_api64.dll
 
       - name: Post-Build Integrity Check
         shell: pwsh
@@ -97,6 +101,20 @@ jobs:
           }
 
           Write-Host "All core binaries generated and verified successfully!"
+
+      - name: Surface build error to issue
+        if: failure()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $logs = ""
+          if (Test-Path napi_build.log) { $logs += "=== napi build ===`n" + (Get-Content napi_build.log -Raw) }
+          if (Test-Path proxy_build.log) { $logs += "=== proxy build ===`n" + (Get-Content proxy_build.log -Raw) }
+          if ($logs.Length -gt 12000) { $logs = $logs.Substring(0, 12000) }
+          $body = "``````n" + $logs + "`n``````"
+          $payload = @{title="CI: main job build error"; body=$body} | ConvertTo-Json -Compress
+          curl.exe -s -X POST -H "Authorization: Bearer $env:GH_TOKEN" -H "Accept: application/vnd.github+json" -d $payload "https://api.github.com/repos/${{ github.repository }}/issues"
 
       - name: Upload Compiled Artifacts
         uses: actions/upload-artifact@v4
