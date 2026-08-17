@@ -1,6 +1,10 @@
+# The proxy DLL forwards the intercepted Steam API calls at runtime via
+# LoadLibraryW/GetProcAddress against "steam_api64_original.dll" (see
+# get_original_steam_dll() in src/lib.rs). The #[no_mangle] pub extern "C"
+# functions (SteamAPI_Init, SteamAPI_Shutdown, SteamAPI_RunCallbacks,
+# SteamNetworking, ...) are already exported by the cdylib, so no linker
+# /export forwarding is required here. Using "/export:X=steam_api64_original.X"
+# would instead demand an import library (steam_api64_original.lib) that is not
+# available, producing LNK2001 unresolved external symbol errors.
 [target.x86_64-pc-windows-msvc]
-rustflags = [
-    "-C", "link-arg=/export:SteamAPI_Init=steam_api64_original.SteamAPI_Init",
-    "-C", "link-arg=/export:SteamAPI_Shutdown=steam_api64_original.SteamAPI_Shutdown",
-    "-C", "link-arg=/export:SteamAPI_RunCallbacks=steam_api64_original.SteamAPI_RunCallbacks"
-]
+rustflags = []
